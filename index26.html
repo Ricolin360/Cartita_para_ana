@@ -1,0 +1,304 @@
+<!DOCTYPE html><html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Proyecto Final Completo</title>
+  <style>
+    html, body { margin:0; height:100%; background:#000; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    .stage { position:relative; width:100vw; height:100vh; overflow:hidden; }/* ===== Fondo (imágenes / mini-vídeos) ===== */
+.bg-layer { position:absolute; inset:0; z-index:1; pointer-events:none; }
+.bg-item { position:absolute; object-fit:cover; border-radius:10px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.35)); opacity:.92; transition: transform 10s ease; }
+.bg-item.portrait { object-fit:contain; }
+.bg-item.featured { z-index:2; box-shadow: 0 10px 30px rgba(236,56,188,.55); outline: 2px solid rgba(236,56,188,.7); opacity:1; animation: featuredGlow 4s ease-in-out infinite; }
+@keyframes featuredGlow { 0%,100%{ filter:drop-shadow(0 0 6px rgba(236,56,188,.6)); } 50%{ filter:drop-shadow(0 0 18px rgba(236,56,188,.9)); } }
+
+/* ===== Carta ===== */
+.wrap { position:absolute; inset:0; display:grid; place-items:center; z-index:5; }
+.carta { width:260px; height:180px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; background:#fff0f6; border:3px solid #b197fc; border-radius:12px; box-shadow:0 0 20px rgba(177,151,252,.6); color:#6a4bc9; font-weight:700; font-size:20px; cursor:pointer; user-select:none; }
+.carta .sub { font-weight:400; font-size:14px; color:#7e62d6; margin-top:6px; }
+.carta.hide { opacity:0; transform:translateY(30vh) scale(.9); transition: transform .9s ease, opacity .9s ease; }
+
+/* ===== Libro ===== */
+.libro { display:none; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(92vw,640px); height:360px; background:#fff; border:2px solid #b197fc; border-radius:12px; z-index:6; box-shadow:0 10px 30px rgba(0,0,0,.35); overflow:hidden; }
+.libro-inner { position:relative; width:100%; height:100%; display:flex; }
+.pagina { flex:1; padding:18px; font-size:16px; line-height:1.6; color:#222; border-right:1px solid #eee; }
+.pagina:last-child{ border-right:none; }
+.hint { position:absolute; right:12px; bottom:10px; font-size:11px; color:#444; background:rgba(255,255,255,.65); padding:4px 8px; border-radius:8px; user-select:none; }
+.page-turn { position:absolute; right:0; top:0; width:50%; height:100%; background:#fff; display:none; z-index:7; transform-origin:right center; transform:scaleX(1); pointer-events:none; }
+.page-turn.animate{ display:block; animation:wipe var(--dur,900ms) ease forwards; box-shadow:-8px 0 18px rgba(0,0,0,.25); }
+@keyframes wipe{ from{transform:scaleX(1);} to{transform:scaleX(0);} }
+
+/* CTA al terminar libro */
+.book-cta { position:absolute; left:0; right:0; bottom:0; display:none; gap:8px; justify-content:center; align-items:center; padding:12px; background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.85) 35%, rgba(255,255,255,.95) 100%); }
+.book-cta .msg { font-size:13px; color:#333; }
+.book-cta .btn { padding:8px 14px; border-radius:10px; border:1px solid #b197fc; background:#b197fc; color:#fff; cursor:pointer; font-weight:600; }
+
+/* ===== Etapa MEDIA: VIDEO + AUDIO juntos ===== */
+.media-stage { position:absolute; inset:0; z-index:6; display:none; place-items:center; }
+.media-card { width:min(92vw, 460px); background:#0b0b0b; border:2px solid #b197fc; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.45); padding:12px; color:#eee; }
+.media-card h3 { margin:4px 4px 10px; font-size:16px; font-weight:600; color:#dcd1ff; text-align:center; }
+.video-wrapper { width:100%; display:grid; place-items:center; background:#000; border-radius:10px; overflow:hidden; }
+.video-wrapper iframe { height: 64vh; max-height: 64vh; width: auto; aspect-ratio: 9/16; display:block; border:0; }
+.video-caption { margin:10px 4px 12px; font-size:14px; color:#ddd; line-height:1.45; text-align:center; }
+
+.voice-note { display:flex; align-items:center; gap:10px; background:#eaf9ef; border:1px solid rgba(37,211,102,.25); border-radius:16px; padding:10px 12px; box-shadow:0 6px 16px rgba(0,0,0,.18); }
+.play-btn { width:38px; height:38px; border-radius:50%; background:#25D366; color:#fff; display:grid; place-items:center; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(37,211,102,.4); user-select:none; }
+.play-btn:active { transform: scale(.98); }
+.wave { display:flex; align-items:flex-end; gap:3px; height:22px; width:150px; }
+.wave span { width:3px; background:#25D366; opacity:.85; border-radius:2px; height:8px; }
+.voice-note.playing .wave span { animation: waveY 1000ms ease-in-out infinite; }
+.wave span:nth-child(odd) { animation-delay: 120ms; }
+.wave span:nth-child(3n) { animation-delay: 240ms; }
+@keyframes waveY { 0%,100%{ height:8px } 50%{ height:22px } }
+.timer { font-size:12px; color:#222; margin-left:auto; }
+
+.to-final { margin-top:12px; width:100%; padding:10px 14px; background:#b197fc; color:#fff; border:0; border-radius:10px; cursor:pointer; font-weight:600; }
+
+/* ===== Sección FINAL (3 partes + aviso discreto) ===== */
+.final-stage { position:absolute; inset:0; z-index:7; display:none; place-items:center; background:#000; color:#fff; }
+.final-card { width:min(900px,92vw); max-height:90vh; padding:22px 18px; background:rgba(0,0,0,.65); border-radius:12px; text-align:left; overflow-y:auto; }
+.final-title { font-size:1.2rem; margin:0 0 12px; font-weight:600; color:#e6d9ff; opacity:0; transform:translateY(6px); transition:opacity .4s ease, transform .4s ease; }
+.final-title.show { opacity:1; transform:translateY(0); }
+.final-text { font-size:1rem; line-height:1.55; white-space:pre-line; min-height:40vh; border-right:2px solid rgba(255,255,255,.9); padding-right:2px; }
+.continue { margin-top:16px; font-size:.9rem; color:#bbb; cursor:pointer; text-align:center; animation: blink 1.5s infinite; }
+@keyframes blink { 0%,100%{opacity:.25;} 50%{opacity:1;} }
+.final-msg { margin-top:18px; font-size:1.05rem; color:#ffddee; display:none; white-space:pre-line; }
+
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <!-- FONDO -->
+    <div class="bg-layer" id="bgLayer"></div><!-- CARTA -->
+<div class="wrap" id="wrap" onclick="abrirCarta()">
+  <div id="carta" class="carta" role="button" tabindex="0">Feliz día 200 de racha 🔥<div class="sub">Tócame para abrir 💌</div></div>
+</div>
+
+<!-- LIBRO -->
+<div id="libro" class="libro">
+  <div class="libro-inner">
+    <div id="pagL" class="pagina"></div>
+    <div id="pagR" class="pagina"></div>
+    <div id="turn" class="page-turn"></div>
+    <div class="hint">Toca para pasar página ➡</div>
+    <div id="bookCta" class="book-cta">
+      <span class="msg">Fin del texto. Cuando quieras, continúa</span>
+      <button id="bookNext" class="btn">Ver video y audio</button>
+    </div>
+  </div>
+</div>
+
+<!-- MEDIA (VIDEO + AUDIO juntos) -->
+<div id="mediaStage" class="media-stage">
+  <div class="media-card">
+    <h3>Video final</h3>
+    <div class="video-wrapper">
+      <iframe src="https://drive.google.com/file/d/1GPPTWAm7dRLBy1svfo5NBS9psDM3n28v/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>
+    </div>
+    <div class="video-caption">Espero y disfrutes el video :)<br>Se recomienda usar audífonos 🎧</div>
+
+    <div id="voiceNote" class="voice-note">
+      <div id="voicePlay" class="play-btn">▶</div>
+      <div class="wave" id="voiceWave"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <div id="voiceTimer" class="timer">0:00</div>
+    </div>
+    <audio id="voiceAudio"><source src="ty_ve_el_video.mp3.m4a" type="audio/mp4" /></audio>
+
+    <button id="toFinal" class="to-final">Ir al mensaje final 💌</button>
+  </div>
+</div>
+
+<!-- SECCIÓN FINAL (TRES PARTES + aviso discreto) -->
+<div id="finalStage" class="final-stage">
+  <div class="final-card">
+    <div id="fTitle" class="final-title"></div>
+    <div id="fArea" class="final-text"></div>
+    <div id="contBtn" class="continue" style="display:none;">👉 Toca para continuar...</div>
+    <div id="finalMsg" class="final-msg"></div>
+  </div>
+</div>
+
+  </div>  <!-- SONIDO al abrir carta -->  <audio id="sfx-open" preload="auto" playsinline>
+    <source src="brian-myers.mp3" type="audio/mpeg" />
+  </audio>  <script>
+    /* ========= FONDO: imágenes + mini-vídeos ========= */
+    const MEDIA_NAMES = [
+      "aaaah-cat.gif","cat-cat-crazy-2-1.mp4","cat-cats-1.png","cat-cute.gif","cat-eating.png","cat-meme-wave-emoji.gif","cat-yep.gif","crocs-1.gif","Diseno_sin_titulo_54-1.png","evil-cat-1.gif","i21najr82fce1.png","images (3).jpeg","images (4).jpeg","images.jpeg","Img1.jpg","Img1.png","Img2.jpg","Img3.jpg","Img4.jpg","Img5.jpg","Img6.jpg","Img7.jpg","Img8.jpg","Img9.jpg","Img10.jpg","Img11.jpg","Img12.jpg","Img13.jpg","Img14.jpg","Img15.jpg","Img16.jpg","Img17.jpg","Img18.jpg","Img19.jpg","Img20.jpg","Img21.jpg","Img22.jpg","Img23.jpg","Img24.jpg","Img25.jpg","Img26.jpg","Img29.jpg","kenjou-cat.gif","luccabug-angry-cat-3-1.mp4","RDT_20250803_121532538233221 8744153205.gif","Screenshot_20250402-194732_(1).png","sticker_11.png","tehe.gif","the-chip-eater.gif","Img27.jpg","Img28.jpg","Screenshot_20250510-230000.png"
+    ];
+    const FEATURED = ["Img27.jpg","Img28.jpg","Screenshot_20250510-230000.png"]; // 3 especiales
+
+    const bgLayer = document.getElementById('bgLayer');
+    function isVideo(n){ return /\.(mp4|webm|ogg)$/i.test(n); }
+    function isImage(n){ return /\.(png|jpe?g|gif|webp|avif)$/i.test(n); }
+    function rand(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+    function inCenter(x,y){ return (x>28 && x<72 && y>28 && y<72); }
+
+    function createItem(name){
+      const featured = FEATURED.includes(name);
+      let el;
+      if (isVideo(name)) { el = document.createElement('video'); el.src = name; el.autoplay = el.muted = el.loop = true; el.playsInline = true; el.preload = 'metadata'; }
+      else { el = document.createElement('img'); el.src = name; el.loading = 'lazy'; }
+      el.className = 'bg-item' + (featured ? ' featured' : '');
+
+      // tamaños
+      el.style.width = (featured? 230 : rand(90,130)) + 'px';
+      el.style.height = 'auto';
+
+      // posiciones (las destacadas van a spots fijos)
+      if (featured){
+        if (name === 'Screenshot_20250510-230000.png'){ el.style.left = '6vw'; el.style.bottom = '6vh'; el.style.top = 'auto'; }
+        else if (name === 'Img27.jpg'){ el.style.left = '70vw'; el.style.top = '12vh'; }
+        else if (name === 'Img28.jpg'){ el.style.left = '48vw'; el.style.top = '78vh'; }
+      } else {
+        let x = rand(4,92), y = rand(6,92);
+        if (inCenter(x,y)){ x+=20; y+=18; }
+        el.style.left = x+'vw'; el.style.top = y+'vh';
+      }
+
+      // retrato
+      const fitPortrait = (m)=>{
+        const w = m.videoWidth||m.naturalWidth||0; const h = m.videoHeight||m.naturalHeight||0;
+        if (h>w && w && h) el.classList.add('portrait');
+      };
+      if (isVideo(name)) el.addEventListener('loadedmetadata',()=>fitPortrait(el));
+      else el.addEventListener('load',()=>fitPortrait(el));
+
+      // leve vida
+      setTimeout(()=>{ el.style.transform = `translate(${rand(-8,8)}px, ${rand(-6,6)}px)`; }, 800);
+      return el;
+    }
+    function renderBG(){ MEDIA_NAMES.forEach(n=>{ const el=createItem(n); if(el) bgLayer.appendChild(el); }); }
+
+    /* ========= CARTA → LIBRO ========= */
+    const carta = document.getElementById('carta');
+    const wrap = document.getElementById('wrap');
+    const libro = document.getElementById('libro');
+    const pagL = document.getElementById('pagL');
+    const pagR = document.getElementById('pagR');
+    const turn = document.getElementById('turn');
+    const sfxOpen = document.getElementById('sfx-open');
+
+    let opened=false; let hintShown=false;
+    function abrirCarta(){
+      if(opened) return; opened=true;
+      try{ sfxOpen.currentTime = 0; sfxOpen.play().catch(()=>{}); }catch(e){}
+      carta.classList.add('hide');
+      setTimeout(()=>{ wrap.style.display='none'; libro.style.display='block'; idx=0; setSpread(idx); if(!hintShown){hintShown=true; /* hint opcional */} }, 900);
+    }
+
+    // Texto del LIBRO (todas las líneas exactas)
+    const paginas = [
+      "Hola ana, primero q nada felicitaciones por llegar a los 200 días de racha de tiktok ",
+      "No cualquiera la verdad y esta racha empezó por un descuido xD",
+      "200 días aguantándonos y q sean más (eso espero) muchas cosas se hablaron en este chat xD como recuerdos,",
+      "Desgracias, arrepentimientos, reflexiones, risas, inseguridades, story time, regla 📏, desveladas, chismes q nunca falten,",
+      "actualizaciones del día a día, códigos de uber xD, diciéndonos verdades, el autocorrector siempre humillando,",
+      "te sientes muy onichan?, agradecimientos, apoyando en malos momentos, haciendo apuestas (siempre perdi), invitaciones a jugar,",
+      "doxxeadas, gustos culposos, chat gpt, tlou ya sabes q quiero decir, pasando recetas, compartiendo y viendo cap de la Rosa África 🗣, or or or, coca, montoya 🗣,",
+      "compartir buena música (esclava) y de lo más importante compartir tiktoks good, bueno si pero lo importante esq siempre se disfruto, eso creo",
+      "Pero gracias pq sigues estando aquí 😁"
+    ];
+    let idx = 0;
+    function setSpread(i){ pagL.textContent = paginas[i] || ''; pagR.textContent = paginas[i+1] || ''; }
+
+    const bookCta = document.getElementById('bookCta');
+    const bookNext = document.getElementById('bookNext');
+    let flipping=false; let bookEnded=false;
+    function pasarPagina(){
+      if(flipping||bookEnded) return; flipping=true;
+      if (idx+2 >= paginas.length){
+        bookEnded = true; bookCta.style.display = 'flex'; flipping=false; return;
+      }
+      turn.classList.remove('animate'); void turn.offsetWidth; turn.classList.add('animate');
+      setTimeout(()=>{ idx = (idx+2); setSpread(idx); }, 450);
+      setTimeout(()=>{ turn.classList.remove('animate'); flipping=false; }, 920);
+    }
+
+    carta.addEventListener('click', abrirCarta, { passive:true });
+    wrap.addEventListener('click', abrirCarta, { passive:true });
+    libro.addEventListener('click', pasarPagina, { passive:true });
+
+    /* ========= MEDIA (video + audio debajo) ========= */
+    const mediaStage = document.getElementById('mediaStage');
+    bookNext.addEventListener('click', ()=>{ libro.style.display='none'; mediaStage.style.display='grid'; });
+
+    const voiceNote = document.getElementById('voiceNote');
+    const voicePlayBtn = document.getElementById('voicePlay');
+    const voiceAudio = document.getElementById('voiceAudio');
+    const voiceTimer = document.getElementById('voiceTimer');
+
+    function fmt(s){ if(!isFinite(s)) return '0:00'; const m=Math.floor(s/60); const sec=Math.floor(s%60).toString().padStart(2,'0'); return `${m}:${sec}`; }
+    function updateTimer(){ voiceTimer.textContent = `${fmt(voiceAudio.currentTime)} / ${fmt(voiceAudio.duration||0)}`; }
+
+    voicePlayBtn.addEventListener('click', ()=>{ if(voiceAudio.paused){ voiceAudio.play(); } else { voiceAudio.pause(); } });
+    voiceAudio.addEventListener('play', ()=>{ voiceNote.classList.add('playing'); voicePlayBtn.textContent='❚❚'; });
+    voiceAudio.addEventListener('pause',()=>{ voiceNote.classList.remove('playing'); voicePlayBtn.textContent='▶'; });
+    voiceAudio.addEventListener('timeupdate', updateTimer);
+    voiceAudio.addEventListener('loadedmetadata', updateTimer);
+
+    // Botón para ir a la sección final (no automático)
+    const toFinalBtn = document.getElementById('toFinal');
+    const finalStage = document.getElementById('finalStage');
+    toFinalBtn.addEventListener('click', ()=>{ mediaStage.style.display='none'; finalStage.style.display='grid'; startFinal(); });
+
+    /* ========= SECCIÓN FINAL (3 partes con botón discreto) ========= */
+    const fTitle = document.getElementById('fTitle');
+    const fArea  = document.getElementById('fArea');
+    const contBtn = document.getElementById('contBtn');
+    const finalMsg = document.getElementById('finalMsg');
+
+    const parts = [
+      { title: 'Cómo empezó todo', text:`Mmm ya como último mensaje y pensado cm terminarlo fuera ya de lo de tiktok\n\nNo fue mala idea entrar a twitch un lunes 4 xD y llegar diciendo "jueguen lucio 🗣🗣" quería tener (el mensaje en captura) para comprobar y confirmar eso pero confío en q si fue eso. estabas jugando y de una pusiste a lucio nicee, habia dicho q solo por eso me quede pero ps obvio era fake XD. Desde el principio de conocer a alguien, uno se da cuenta del tipo de persona q esta conociendo. de ahí todo ya fue ps normal siempre me la pase bien en los directos ya sabes, ahh recuerdo y q nunca se me olvida fue cuando arrasamos, nadie nos detenia con mercy y deba de las primeras sino creo q la primera vez q jugamos tu y yo XD. Y me gustaba quedarme hasta las 4am XD y creo q nunca explique bien pq me quedaba hasta esa hora y no me iba (me recordó a cuando explicaste lo de las donaciones) pero mmmmm..... me gustaba estar distraído en algo más sabes? En ese tiempo estaba mmmm no muy bien mentalmente... pero mejor prosigo, y enserió me gustaban y me gustan mucho tus directos por eso me daba un poco de fomo? Sino me quedaba y o no iba? y lllegaba tarde pq enserio enserio, me ponia hacer otras cosas y no me gustaba estar lurk. mas q nada siempre estar activo o nadota, y intento apoyar lo más q puedo pq desde el principio vi un GRAN potencial en ti enserió. Y no queria q pasara cm a una streamer q me gustaba ver mucho q ya no hace directos. pero todavía sigues, asi q ni tan mal lo estoy haciendo yiyi eso creo. Y No miento q mi hora de dormir era a la 1am max pero de ahi todo cambio. XD \nOjalá nunca se acaben los directos. :)` },
+      { title: 'Conocí a una muyy buena amiga :3', text:`No son nada bueno para escribir y luego para resumir cosas pero me vale. Con q se pueda leer.\nbueno, llego discord y ps hay ya se fue dando. al principio solo fue cosas del directo pero cada vez se iban mencionando mas cosas, debo decir q eres una persona algo difícil de conocer al principio eh. XD, debo admitir que en esos tiempos le pensaba ps para sacar temas, ps solo cuando pasaba algo muy destacable. ahora ya se habla de cualquier cosa y todo importa. me entretiene y me divierte y espero q a ti también. hablando de eso. disfrute mucho reaccionar a los grammys y al super, me la pase muy bien, enserió. me hiciste sacar mi lado swiftie. No. Ma. Mes. Nunca imagine eso pero ty.\nY me gusta hablar y contar cosas contigo (aunque no suelo contar mucho) mi vida es algo aburrida? No cuento tanto y no me pasan tantas cosas como a ti, pero me divierte más escuchar las cosas q te pasan, sabes contar las cosas bien y interesantes y eso lo aprecio, la confianza de q me cuentes tus cosas. Siempre les pongo atención y importancia, y intento dar opinión Pq me interesan :) y yo soy más de escuchar, ser curiosos, pero tampoco intentar no pasarme jsjsjs (ya se ya se, chismoso le dirás tu, y tienes razón XD) pero sabes. No soy así con todos la vd. Pq de que me gusta escuchar cosa y hablar con gente sip. Pero asi cm contigo la verdad es q no. y q cuando cuente algo yo, lo escuches, y si se que lo haces. Respondes a lo q digo y hasta recomendaciones y consejos das XD. y con eso tengo (aunque aveces se te pasan cosas y ahí quedan pero X enserió xD) me gusta contarte cosas y que te rías, y entretengas, y me gustan tus respuestas, que espero y no te rías de mi, sino conmigo XD. na pero ty por estar siempre ahí cuando puedes y creo q seguirás estando?. :)\n \nNo se pq me llego a la mente cuando te pedí q me llamaras y me llamaste y me hiciste librarme de una XD. Y luego lo de las alarmas q te marcaba para: Despierta Despierta 🗣🗣 y tu igual (sticker del perrito sonriendo) me daba mucha risa.\nAsi q con eso me di cuenta que puedo contar contigo para ayudas? Favores? Consejos? Conmigo si puedes contar con eso y eso si he visto de ti, así q ty.` },
+      { title: 'Para terminar...', text:`Con todo lo mencionado. Me di cuenta que eres una persona muyyy especial y única no lo olvides. muy graciosa y divertida, que resuelve muuyyy rápido, siempre tiene algo q decir y con tremendo carisma q fácilmente le puedes caer bien a cualquiera. y mmmmm... diva 🫦.\nAl principio si era difícil hablar y buscar q decir, ya fuera en stream, chat o jugando off pero siento que ya nos desenvolvemos más? Lit ya siento q puedo hablar de cualquier cosa contigo. y repito tus palabras con un ligero cambio obviamente Xd. "Hace rato no tenia una buena amiga como tu" he dicho q es difícil q alguien me caiga mal o siempre intento quedar bien con todos (ya voy mejorando en eso, ok) pero ...... ya sea en stream, por chat (tiktok whats, discord o cualquier app donde nos seguimos) hablando y jugando (off en stream) o haciendo cualquier cosa me divierto mucho.\nMe recordó la primera vez en roblox con el juego de terror, el bingo y el de mmmm no recuerdo cm se llamaba pero el de las preguntas XD lit muuyyy pocas veces me la he pasado Tan bien, asi q agradezco tu tiempo para hacer todo eso q es lo q más aprecio siempre yo :)\n\nYa para terminar ahora si. espero q hayas disfrutado todo lo q hice y he hecho (como yo hago lo q has hecho y haces), me divierto haciendo.\n\nTy, por cada risa, por la confianza, cada palabra y cada momento.` }
+    ];
+
+    const signature = `De tu mmm buen amigo ;)\nRicolin :3`;
+
+    let pIndex = 0, pChar = 0, typing=false; let pTimer=null; let currentText = parts[0].text;
+
+    function showFinalTitle(t){ fTitle.textContent=t; fTitle.classList.remove('show'); void fTitle.offsetWidth; fTitle.classList.add('show'); }
+
+    function typeStep(){
+      if(pChar <= currentText.length){
+        fArea.textContent = currentText.slice(0, pChar);
+        const prev = currentText[pChar-1]||''; const ch = currentText[pChar]||'';
+        pChar++;
+        const pause = (prev==='.'||prev==='!'||prev==='?')?280 : (prev==='\n'?320 : 22);
+        pTimer = setTimeout(typeStep, pause);
+      } else {
+        // mostrar aviso discreto
+        contBtn.style.display = 'block';
+      }
+    }
+
+    function startFinal(){
+      pIndex = 0; pChar=0; fArea.textContent=''; contBtn.style.display='none'; finalMsg.style.display='none';
+      showFinalTitle(parts[0].title); currentText=parts[0].text; typeStep();
+    }
+
+    function nextPart(){
+      contBtn.style.display='none';
+      pIndex++;
+      if(pIndex < parts.length){
+        // siguiente parte
+        fArea.textContent=''; pChar=0; showFinalTitle(parts[pIndex].title); currentText=parts[pIndex].text; typeStep();
+      } else {
+        // escribir la firma final
+        fArea.textContent=''; fTitle.classList.remove('show'); finalMsg.style.display='block';
+        typeSignature();
+      }
+    }
+
+    function typeSignature(){
+      finalMsg.textContent=''; let i=0; (function loop(){
+        if(i<=signature.length){ finalMsg.textContent = signature.slice(0,i++); setTimeout(loop, 40); }
+      })();
+    }
+
+    contBtn.addEventListener('click', nextPart);
+
+    // ===== Iniciar =====
+    window.addEventListener('load', ()=>{ renderBG(); });
+  </script></body>
+</html>
